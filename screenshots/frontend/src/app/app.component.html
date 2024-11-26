@@ -1,0 +1,60 @@
+<mat-toolbar color="primary">
+  <h3 class="toolbar-title">Скриншотер Internet Archive</h3>
+</mat-toolbar>
+
+<div class="container">
+  <mat-card class="form-card">
+    <mat-card-content>
+      <!-- Поле для ввода URL-адресов -->
+      <mat-form-field appearance="fill" class="input-field">
+        <mat-label>Введите URL-адреса (по одному на строку)</mat-label>
+        <textarea matInput [(ngModel)]="urls" placeholder="example.com"></textarea>
+      </mat-form-field>
+
+      <!-- Поле для начальной даты -->
+      <mat-form-field appearance="fill" class="input-field">
+        <mat-label>Начальная дата</mat-label>
+        <input matInput [matDatepicker]="pickerStart" [(ngModel)]="startDate">
+        <mat-datepicker-toggle matSuffix [for]="pickerStart"></mat-datepicker-toggle>
+        <mat-datepicker #pickerStart></mat-datepicker>
+      </mat-form-field>
+
+      <!-- Поле для конечной даты -->
+      <mat-form-field appearance="fill" class="input-field">
+        <mat-label>Конечная дата</mat-label>
+        <input matInput [matDatepicker]="pickerEnd" [(ngModel)]="endDate">
+        <mat-datepicker-toggle matSuffix [for]="pickerEnd"></mat-datepicker-toggle>
+        <mat-datepicker #pickerEnd></mat-datepicker>
+      </mat-form-field>
+
+      <!-- Кнопка и индикатор загрузки -->
+      <div class="button-container">
+        <button mat-raised-button color="primary" (click)="fetchAndGenerateScreenshots()" [disabled]="loading">
+          Создать скриншоты
+        </button>
+      </div>
+
+      <!-- Прогресс-бар -->
+      <div *ngIf="loading" class="progress-container">
+        <mat-progress-bar mode="determinate" [value]="progressValue"></mat-progress-bar>
+        <p>{{ progressValue }}%</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Список скриншотов -->
+  <div *ngIf="screenshots.length > 0" class="grid-container">
+    <mat-card class="grid-item" *ngFor="let screenshot of screenshots">
+      <mat-card-header>
+        <mat-card-title>
+          <a href="{{ screenshot.url }}" target="_blank">{{ screenshot.url | slice: 0:30 }}...</a>
+        </mat-card-title>
+        <mat-card-subtitle>{{ screenshot.date }}</mat-card-subtitle>
+      </mat-card-header>
+      <img mat-card-image [src]="screenshot.filePath" alt="Screenshot">
+      <mat-card-actions>
+        <button mat-button color="primary" (click)="openImage(screenshot.filePath)">Просмотр</button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

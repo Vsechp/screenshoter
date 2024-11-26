@@ -1,0 +1,91 @@
+/* Общие стили */
+.toolbar-title {
+  margin: 0 auto;
+  text-align: left;
+  font-weight: bold;
+  color: var(--toolbar-text);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.form-card {
+  width: 30rem;
+  padding: 1.5rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  background: var(--card-bg);
+  color: var(--text-color);
+}
+
+.input-field {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.progress-container p {
+  margin-top: 0.5rem;
+  font-weight: bold;
+}
+
+/* Сетка для скриншотов */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 2rem; /* Увеличено расстояние между карточками */
+  width: 90%;
+  padding: 1rem;
+  margin-top: 2rem;
+}
+
+/* Карточка скриншота */
+.grid-item {
+  cursor: pointer;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* Анимация при наведении */
+  border-radius: 0.5rem;
+}
+
+.grid-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+}
+
+/* Темы */
+:root {
+  --card-bg: #ffffff;
+  --text-color: #000000;
+  --toolbar-bg: #3f51b5;
+  --toolbar-text: #ffffff;
+}
+
+.dark-theme {
+  --card-bg: #333333;
+  --text-color: #ffffff;
+  --toolbar-bg: #1a1a1a;
+  --toolbar-text: #ffffff;
+}
+
+.light-theme {
+  --card-bg: #ffffff;
+  --text-color: #000000;
+  --toolbar-bg: #3f51b5;
+  --toolbar-text: #ffffff;
+}
