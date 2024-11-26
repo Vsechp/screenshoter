@@ -26,9 +26,8 @@ npx tsc
 ### Установка зависимостей для frontend
 
 ```bash
-cd ..
 cd frontend/
-npm i
+npm install --legacy-peer-deps
 ```
 
 ## Запуск
@@ -36,7 +35,6 @@ npm i
 ### Запуск сервера backend
 
 ```bash
-cd ..
 cd backend/
 npm run start
 ```
@@ -44,7 +42,6 @@ npm run start
 ### Запуск сервера frontend
 
 ```bash
-cd ..
 cd frontend/
 ng start
 ```
