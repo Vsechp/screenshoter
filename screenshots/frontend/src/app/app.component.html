@@ -47,9 +47,9 @@
     <mat-card class="grid-item" *ngFor="let screenshot of screenshots">
       <mat-card-header>
         <mat-card-title>
-          <a href="{{ screenshot.url }}" target="_blank">{{ screenshot.url | slice: 0:30 }}...</a>
+          <a href="{{ screenshot.snapshotUrl }}" target="_blank">{{ screenshot.snapshotUrl | slice: 0:30 }}...</a>
         </mat-card-title>
-        <mat-card-subtitle>{{ screenshot.date }}</mat-card-subtitle>
+        <mat-card-subtitle>{{ screenshot.timestamp }}</mat-card-subtitle>
       </mat-card-header>
       <img mat-card-image [src]="screenshot.filePath" alt="Screenshot">
       <mat-card-actions>

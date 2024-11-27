@@ -13,7 +13,7 @@ import {
 } from '@angular/material/datepicker';
 import { MatButtonModule } from '@angular/material/button'; // Изменено
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import {NgForOf, NgIf, SlicePipe} from '@angular/common';
+import { NgForOf, NgIf, SlicePipe } from '@angular/common';
 import {
   MAT_DATE_LOCALE,
   MatNativeDateModule,
@@ -73,11 +73,11 @@ export class AppComponent implements OnInit {
   urls: string = '';
   startDate: Date | null = null;
   endDate: Date | null = null;
-  screenshots: { url: string; filePath: string; date: string }[] = [];
+  screenshots: { snapshotUrl: string; filePath: string; original: string; timestamp: string }[] = [];
   loading: boolean = false;
   imageObject: Array<object> = [];
   progressValue: number = 0;
-  totalScreenshots: number = 0; // Добавлено
+  totalScreenshots: number = 0;
 
   @HostBinding('class') className = '';
 
@@ -116,23 +116,27 @@ export class AppComponent implements OnInit {
 
     const serverUrl = 'http://localhost:3000/generate';
 
-    // Начинаем запрос
     this.http
-      .post<{ url: string; filePath: string; date: string }[]>(serverUrl, {
-        domains,
-        from: formattedStartDate,
-        to: formattedEndDate,
-      })
+      .post<{ total: number; screenshots: { snapshotUrl: string; filePath: string; original: string; timestamp: string }[] }>(
+        serverUrl,
+        {
+          domains,
+          from: formattedStartDate,
+          to: formattedEndDate,
+        }
+      )
       .subscribe({
-        next: (screenshots) => {
-          this.screenshots = screenshots;
+        next: (response) => {
+          if (response.screenshots && Array.isArray(response.screenshots)) {
+            this.screenshots = response.screenshots;
+            this.prepareSliderImages();
+            console.log('Screenshots received:', this.screenshots);
+          } else {
+            console.error('Unexpected response format:', response);
+            this.showErrorMessage('Неверный формат данных от сервера.');
+          }
           this.loading = false;
           this.progressValue = 100;
-          if (screenshots.length === 0) {
-            this.showErrorMessage('Снимки для указанных доменов и дат не найдены.');
-          } else {
-            this.prepareSliderImages();
-          }
         },
         error: (err: HttpErrorResponse) => {
           console.error('Ошибка создания скриншотов:', err);
@@ -143,16 +147,15 @@ export class AppComponent implements OnInit {
         },
       });
 
-    // Симуляция прогресса на основе количества скриншотов
     this.simulateProgress();
   }
 
   simulateProgress() {
     const progressInterval = setInterval(() => {
       if (this.progressValue < 90) {
-        this.progressValue += Math.floor(Math.random() * 10) + 1; // Добавляем случайное значение от 1 до 10
+        this.progressValue += Math.floor(Math.random() * 10) + 1;
         if (this.progressValue > 90) {
-          this.progressValue = 90; // Ограничиваем прогресс на 90%
+          this.progressValue = 90;
         }
       } else {
         clearInterval(progressInterval);
@@ -164,8 +167,8 @@ export class AppComponent implements OnInit {
     this.imageObject = this.screenshots.map((screenshot) => ({
       image: screenshot.filePath,
       thumbImage: screenshot.filePath,
-      alt: screenshot.url,
-      title: `Ссылка: ${screenshot.url}\nДата: ${screenshot.date}`,
+      alt: screenshot.original,
+      title: `Ссылка: ${screenshot.original}\nДата: ${screenshot.timestamp}`,
     }));
   }
 
