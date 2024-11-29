@@ -1,9 +1,60 @@
-/* Общие стили */
+@import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500&display=swap');
+
+:root {
+  --primary-color: #00BCD4;
+  --primary-light: #B2EBF2;
+  --primary-dark: #008BA3;
+  --accent-color: #007191;
+  --accent-light: #00d9ff;
+  --accent-dark: #003a43;
+  --warn-color: #F44336;
+  --background-color: #F5F5F5;
+  --card-bg: #FFFFFF;
+  --calendar: #dadada;
+  --card-hover-bg: #F2F2F2;
+  --form-bg: #FFFFFF;
+  --input-bg: #dadada;
+  --text-color: #212121;
+  --input-text-color: #5c5c5c; /* Основной цвет текста */
+  --input-placeholder-color: #8a8a8a; /* Цвет текста в неактивном состоянии */
+  --toolbar-bg: var(--primary-color);
+  --toolbar-text: #FFFFFF;
+  --label-text-color: #333333;
+  --button-disabled: #8aa1aa;
+  --font-family: 'Roboto', sans-serif;
+}
+
+.dark-theme {
+  --background-color: #3A3A3A;
+  --card-bg: #4A4A4A;
+  --card-hover-bg: #5A5A5A;
+  --form-bg: #4A4A4A;
+  --input-bg: #515151;
+  --text-color: #E0E0E0;
+  --input-text-color: #FFFFFF; /* Белый текст для тёмной темы */
+  --input-placeholder-color: rgba(255, 255, 255, 0.6); /* Светлый текст для плейсхолдера */
+  --toolbar-bg: var(--primary-dark);
+  --toolbar-text: #FFFFFF;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  margin: 0;
+}
+
 .toolbar-title {
   margin: 0 auto;
   text-align: left;
   font-weight: bold;
   color: var(--toolbar-text);
+}
+
+mat-toolbar {
+  background-color: var(--toolbar-bg) !important;
+  color: var(--toolbar-text) !important;
+  font-family: var(--font-family);
 }
 
 .container {
@@ -16,10 +67,52 @@
 .form-card {
   width: 30rem;
   padding: 1.5rem;
-  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.1);
   border-radius: 0.5rem;
-  background: var(--card-bg);
+  background: var(--form-bg);
   color: var(--text-color);
+  font-family: var(--font-family);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.form-card:hover {
+  background-color: var(--card-hover-bg);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.mat-mdc-text-field-wrapper {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text-color) !important;
+  border-radius: 0.375rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.mat-mdc-text-field-wrapper:hover {
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+
+.mat-mdc-input-element {
+  background-color: transparent;
+  color: var(--input-text-color) !important;
+  font-family: var(--font-family);
+  font-size: 1rem;
+  padding: 0.5rem;
+  outline: none;
+}
+
+
+.mat-mdc-input-element::placeholder {
+  color: var(--input-placeholder-color) !important; /* Цвет текста плейсхолдера */
+  font-style: italic;
+}
+
+.mat-mdc-input-element:focus {
+  color: var(--input-text-color) !important; /* Цвет текста при фокусе */
+  border-bottom: 2px solid var(--primary-color);
+  outline: none;
 }
 
 .input-field {
@@ -31,6 +124,53 @@
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.mat-mdc-raised-button.mat-primary {
+  background-color: var(--primary-color) !important;
+  color: #FFFFFF !important;
+  font-family: var(--font-family);
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, box-shadow 0.2s ease;
+}
+
+.mat-mdc-raised-button.mat-primary:hover {
+  background-color: var(--primary-dark) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mat-mdc-raised-button.mat-primary:focus {
+  background-color: var(--accent-dark) !important;
+  outline: 2px solid var(--primary-light);
+}
+
+.mat-mdc-raised-button.mat-primary:disabled {
+  background-color: var(--button-disabled) !important;
+  color: var(--text-color) !important;
+  cursor: not-allowed;
+  opacity: 0.8;
+  box-shadow: none;
+}
+
+.mat-mdc-input-element {
+  background-color: transparent;
+  color: var(--input-text-color) !important;
+  font-family: var(--font-family);
+  font-size: 1rem;
+  padding: 0.5rem;
+  border: none !important;
+  outline: none !important;
+}
+
+mat-label {
+  color: var(--label-text-color) !important;
+  font-family: var(--font-family);
+  font-weight: 400;
+  font-size: 1rem;
+  transition: color 0.3s ease-in-out;
 }
 
 .progress-container {
@@ -46,46 +186,50 @@
   font-weight: bold;
 }
 
-/* Сетка для скриншотов */
 .grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 2rem; /* Увеличено расстояние между карточками */
+  gap: 2rem;
   width: 90%;
   padding: 1rem;
   margin-top: 2rem;
 }
 
-/* Карточка скриншота */
 .grid-item {
   cursor: pointer;
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* Анимация при наведении */
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  font-family: var(--font-family);
   border-radius: 0.5rem;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .grid-item:hover {
   transform: translateY(-5px);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  background-color: var(--card-hover-bg);
 }
 
-/* Темы */
-:root {
-  --card-bg: #ffffff;
-  --text-color: #000000;
-  --toolbar-bg: #3f51b5;
-  --toolbar-text: #ffffff;
+mat-card {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.dark-theme {
-  --card-bg: #333333;
-  --text-color: #ffffff;
-  --toolbar-bg: #1a1a1a;
-  --toolbar-text: #ffffff;
+mat-card:hover {
+  background-color: var(--card-hover-bg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-.light-theme {
-  --card-bg: #ffffff;
-  --text-color: #000000;
-  --toolbar-bg: #3f51b5;
-  --toolbar-text: #ffffff;
+mat-card-subtitle {
+  color: #333333;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.screenshots-container {
+  margin-top: 20px;
 }

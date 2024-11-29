@@ -1,7 +1,7 @@
-import { Component, HostBinding, OnInit } from '@angular/core';
+import { Component, HostBinding, NgZone, OnInit } from '@angular/core';
 import { HttpClient, HttpClientModule, HttpErrorResponse } from '@angular/common/http';
 import { MatToolbar } from '@angular/material/toolbar';
-import { MatCard, MatCardContent, MatCardModule } from '@angular/material/card'; // Добавлено MatCardModule
+import { MatCard, MatCardContent, MatCardModule } from '@angular/material/card';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatInput, MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
@@ -11,9 +11,9 @@ import {
   MatDatepickerModule,
   MatDatepickerToggle,
 } from '@angular/material/datepicker';
-import { MatButtonModule } from '@angular/material/button'; // Изменено
+import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { NgForOf, NgIf, SlicePipe } from '@angular/common';
+import { DecimalPipe, NgForOf, NgIf, SlicePipe } from '@angular/common';
 import {
   MAT_DATE_LOCALE,
   MatNativeDateModule,
@@ -22,7 +22,6 @@ import {
   MatDateFormats,
 } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NgImageSliderModule } from 'ng-image-slider';
 
 const MY_DATE_FORMATS: MatDateFormats = {
   parse: {
@@ -45,7 +44,7 @@ const MY_DATE_FORMATS: MatDateFormats = {
     MatToolbar,
     MatCard,
     MatCardContent,
-    MatCardModule, // Добавлено
+    MatCardModule,
     MatFormField,
     MatInput,
     MatInputModule,
@@ -55,13 +54,13 @@ const MY_DATE_FORMATS: MatDateFormats = {
     MatDatepickerInput,
     MatDatepickerToggle,
     MatDatepicker,
-    MatButtonModule, // Изменено
+    MatButtonModule,
     MatProgressBarModule,
     MatLabel,
     NgIf,
     NgForOf,
-    NgImageSliderModule,
     SlicePipe,
+    DecimalPipe,
   ],
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'ru-RU' },
@@ -75,15 +74,19 @@ export class AppComponent implements OnInit {
   endDate: Date | null = null;
   screenshots: { snapshotUrl: string; filePath: string; original: string; timestamp: string }[] = [];
   loading: boolean = false;
-  imageObject: Array<object> = [];
   progressValue: number = 0;
+  logs: string[] = [];
+  completedScreenshots: number = 0;
   totalScreenshots: number = 0;
+  successCount: number = 0;
+  totalCount: number = 0;
 
   @HostBinding('class') className = '';
 
   constructor(
     private http: HttpClient,
     private snackBar: MatSnackBar,
+    private ngZone: NgZone,
     private dateAdapter: DateAdapter<Date>
   ) {
     this.dateAdapter.setLocale('ru-RU');
@@ -105,71 +108,76 @@ export class AppComponent implements OnInit {
 
     this.loading = true;
     this.progressValue = 0;
+    this.logs = [];
+    this.screenshots = [];
+    this.completedScreenshots = 0;
+    this.totalScreenshots = 0;
 
     const formattedStartDate = this.formatDate(this.startDate);
     const formattedEndDate = this.formatDate(this.endDate);
 
     const domains = this.urls
       .split('\n')
-      .map((url) => url.trim())
+      .map((url) => this.normalizeUrl(url.trim()))
       .filter((url) => url);
 
-    const serverUrl = 'http://localhost:3000/generate';
+    const serverUrl = 'http://localhost:3000';
 
-    this.http
-      .post<{ total: number; screenshots: { snapshotUrl: string; filePath: string; original: string; timestamp: string }[] }>(
-        serverUrl,
-        {
-          domains,
-          from: formattedStartDate,
-          to: formattedEndDate,
-        }
-      )
-      .subscribe({
-        next: (response) => {
-          if (response.screenshots && Array.isArray(response.screenshots)) {
-            this.screenshots = response.screenshots;
-            this.prepareSliderImages();
-            console.log('Screenshots received:', this.screenshots);
-          } else {
-            console.error('Unexpected response format:', response);
-            this.showErrorMessage('Неверный формат данных от сервера.');
-          }
-          this.loading = false;
-          this.progressValue = 100;
-        },
-        error: (err: HttpErrorResponse) => {
-          console.error('Ошибка создания скриншотов:', err);
-          const errorMessage = err.error?.error || 'Ошибка при создании скриншотов.';
-          this.showErrorMessage(errorMessage);
-          this.loading = false;
-          this.progressValue = 0;
-        },
-      });
+    this.http.post(`${serverUrl}/generate`, {
+      domains,
+      from: formattedStartDate,
+      to: formattedEndDate,
+    }).subscribe({
+      next: () => {
+        const eventSource = new EventSource(`${serverUrl}/progress`);
 
-    this.simulateProgress();
+        eventSource.onmessage = (event) => {
+          this.ngZone.run(() => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'progress') {
+              this.progressValue = (data.completed / data.total) * 100;
+              this.completedScreenshots = data.completed;
+              this.totalScreenshots = data.total;
+            } else if (data.type === 'log') {
+              this.logs.push(data.message);
+            } else if (data.type === 'complete') {
+              this.loading = false;
+              this.progressValue = 100;
+              this.completedScreenshots = data.total;
+              this.totalScreenshots = data.total;
+              this.screenshots = data.screenshots;
+              this.showCompletionMessage(data.success, data.total);
+              eventSource.close();
+            }
+          });
+        };
+
+        eventSource.onerror = (error) => {
+          this.ngZone.run(() => {
+            console.error('Ошибка SSE:', error);
+            this.showErrorMessage('Произошла ошибка при получении данных с сервера.');
+            this.loading = false;
+            eventSource.close();
+          });
+        };
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Ошибка создания скриншотов:', err);
+        const errorMessage = err.error?.error || 'Ошибка при создании скриншотов.';
+        this.showErrorMessage(errorMessage);
+        this.loading = false;
+      },
+    });
   }
 
-  simulateProgress() {
-    const progressInterval = setInterval(() => {
-      if (this.progressValue < 90) {
-        this.progressValue += Math.floor(Math.random() * 10) + 1;
-        if (this.progressValue > 90) {
-          this.progressValue = 90;
-        }
-      } else {
-        clearInterval(progressInterval);
-      }
-    }, 1000);
-  }
-
-  prepareSliderImages() {
-    this.imageObject = this.screenshots.map((screenshot) => ({
-      image: screenshot.filePath,
-      thumbImage: screenshot.filePath,
-      alt: screenshot.original,
-      title: `Ссылка: ${screenshot.original}\nДата: ${screenshot.timestamp}`,
-    }));
+  showCompletionMessage(success: number, total: number) {
+    this.successCount = success;
+    this.totalCount = total;
+    const message = `Загрузка завершена. Успешно создано скриншотов: ${success} из ${total}.`;
+    this.snackBar.open(message, 'Закрыть', {
+      duration: 5000,
+      verticalPosition: 'top',
+    });
   }
 
   showErrorMessage(message: string) {
@@ -191,5 +199,32 @@ export class AppComponent implements OnInit {
 
   openImage(filePath: string) {
     window.open(filePath, '_blank');
+  }
+
+  normalizeUrl(url: string): string {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `http://${url}`;
+    }
+    return url;
+  }
+
+  formatTimestamp(timestamp: string): string {
+    const year = parseInt(timestamp.substring(0, 4), 10);
+    const month = parseInt(timestamp.substring(4, 6), 10) - 1;
+    const day = parseInt(timestamp.substring(6, 8), 10);
+    const hours = parseInt(timestamp.substring(8, 10), 10);
+    const minutes = parseInt(timestamp.substring(10, 12), 10);
+    const seconds = parseInt(timestamp.substring(12, 14), 10);
+
+    const date = new Date(year, month, day, hours, minutes, seconds);
+
+    return date.toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   }
 }

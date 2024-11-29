@@ -29,6 +29,15 @@ function clearScreenshotsDir() {
     }
 }
 
+// Глобальное состояние для отслеживания текущего процесса
+let currentProcess: {
+    total: number;
+    completed: number;
+    screenshots: { snapshotUrl: string; original: string; timestamp: string; filePath: string }[];
+    clients: Response[];
+    logs: string[];
+} | null = null;
+
 app.post('/generate', async (req: Request, res: Response) => {
     const domains: string[] = req.body.domains;
     const from: string = req.body.from;
@@ -40,6 +49,10 @@ app.post('/generate', async (req: Request, res: Response) => {
 
     if (!from || !to) {
         return res.status(400).json({ error: 'Не указан период дат!' });
+    }
+
+    if (currentProcess) {
+        return res.status(429).json({ error: 'Процесс уже запущен. Пожалуйста, дождитесь завершения.' });
     }
 
     clearScreenshotsDir();
@@ -56,70 +69,151 @@ app.post('/generate', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Снимки для указанных доменов и дат не найдены.' });
         }
 
-        const maxConcurrentScreenshots = 5;
-        const screenshots: { snapshotUrl: string; original: string; timestamp: string; filePath: string }[] = [];
-        const queue = allSnapshots.map((item, index) => ({ ...item, index }));
+        currentProcess = {
+            total: allSnapshots.length,
+            completed: 0,
+            screenshots: [],
+            clients: [],
+            logs: [],
+        };
 
-        async function processBatch(batch: { snapshotUrl: string; original: string; timestamp: string; index: number }[]) {
-            return Promise.allSettled(
-                batch.map(async ({ snapshotUrl, original, timestamp, index }) => {
-                    // Получаем хостнейм из оригинального URL
-                    const urlObj = new URL(original.startsWith('http') ? original : `http://${original}`);
-                    const hostname = urlObj.hostname.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                    const dateStr = formatTimestamp(timestamp); // Форматируем дату
+        // Запускаем процесс в фоновом режиме
+        processSnapshots(allSnapshots, currentProcess).then(() => {
+            currentProcess = null;
+        }).catch((error) => {
+            console.error('Ошибка при обработке скриншотов:', error);
+            currentProcess = null;
+        });
 
-                    const fileName = `${hostname}_${dateStr}.png`;
-                    const filePath = path.join(outputDir, fileName);
-
-                    try {
-                        await takeScreenshot(snapshotUrl, filePath);
-                        return {
-                            snapshotUrl,
-                            original,
-                            timestamp,
-                            filePath: `http://localhost:${PORT}/screenshots/${fileName}`,
-                        };
-                    } catch (error) {
-                        console.error(`Ошибка при создании скриншота для ${snapshotUrl}:`, error);
-                        return null;
-                    }
-                })
-            );
-        }
-
-        function formatTimestamp(timestamp: string): string {
-            const year = timestamp.substring(0, 4);
-            const month = timestamp.substring(4, 6);
-            const day = timestamp.substring(6, 8);
-
-            const date = new Date(`${year}-${month}-${day}`);
-            const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-            return date.toLocaleDateString('en-US', options).replace(/ /g, '_');
-        }
-
-        async function processQueue() {
-            while (queue.length > 0) {
-                const batch = queue.splice(0, maxConcurrentScreenshots);
-                const results = await processBatch(batch);
-
-                results.forEach((result) => {
-                    if (result.status === 'fulfilled' && result.value) {
-                        screenshots.push(result.value);
-                    } else if (result.status === 'rejected') {
-                        console.error('Ошибка выполнения промиса:', result.reason);
-                    }
-                });
-            }
-        }
-
-        await processQueue();
-        res.json({ total: allSnapshots.length, screenshots });
-
+        res.status(200).json({ message: 'Процесс запущен' });
     } catch (error) {
         console.error('Ошибка при обработке запросов:', error);
         res.status(500).json({ error: 'Ошибка при генерации скриншотов' });
     }
 });
+
+app.get('/progress', (req: Request, res: Response) => {
+    if (!currentProcess) {
+        res.status(204).end(); // Нет активного процесса
+        return;
+    }
+
+    // Захватываем текущее состояние процесса и явно указываем, что оно не null
+    const process = currentProcess as NonNullable<typeof currentProcess>;
+
+    // Устанавливаем заголовки SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    process.clients.push(res);
+
+    // Отправляем логи, если они есть
+    process.logs.forEach((log) => {
+        res.write(`data: ${JSON.stringify({ type: 'log', message: log })}\n\n`);
+    });
+
+    // Убираем клиента при разрыве соединения
+    req.on('close', () => {
+        process.clients = process.clients.filter((client) => client !== res);
+    });
+});
+
+async function processSnapshots(
+    allSnapshots: { timestamp: string; original: string; snapshotUrl: string }[],
+    process: NonNullable<typeof currentProcess>
+) {
+    const maxConcurrentScreenshots = 5;
+    const queue = allSnapshots.slice(); // Копируем массив
+
+    const processSnapshot = async (snapshot: { snapshotUrl: string; original: string; timestamp: string }) => {
+        const { snapshotUrl, original, timestamp } = snapshot;
+        const urlObj = new URL(snapshotUrl);
+        const hostname = urlObj.hostname.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const dateStr = formatTimestamp(timestamp);
+
+        const fileName = `${hostname}_${dateStr}.png`;
+        const filePath = path.join(outputDir, fileName);
+
+        try {
+            const logMessage = `Начало обработки: ${snapshotUrl}`;
+            console.log(logMessage);
+            process.logs.push(logMessage);
+            broadcast(process, { type: 'log', message: logMessage });
+
+            await takeScreenshot(snapshotUrl, filePath);
+
+            process.screenshots.push({
+                snapshotUrl,
+                original,
+                timestamp,
+                filePath: `http://localhost:${PORT}/screenshots/${fileName}`,
+            });
+
+            process.completed++;
+            broadcast(process, {
+                type: 'progress',
+                completed: process.completed,
+                total: process.total,
+            });
+
+            const successMessage = `Скриншот создан: ${snapshotUrl}`;
+            console.log(successMessage);
+            process.logs.push(successMessage);
+            broadcast(process, { type: 'log', message: successMessage });
+        } catch (error) {
+            const errorMessage = `Ошибка при создании скриншота для ${snapshotUrl}`;
+            console.error(errorMessage, error);
+            process.logs.push(errorMessage);
+            broadcast(process, { type: 'log', message: errorMessage });
+            process.completed++;
+            broadcast(process, {
+                type: 'progress',
+                completed: process.completed,
+                total: process.total,
+            });
+        }
+    };
+
+    const executing: Promise<void>[] = [];
+
+    while (queue.length > 0 || executing.length > 0) {
+        while (executing.length < maxConcurrentScreenshots && queue.length > 0) {
+            const snapshot = queue.shift();
+            if (snapshot) {
+                const promise = processSnapshot(snapshot);
+                executing.push(promise);
+                promise.finally(() => {
+                    executing.splice(executing.indexOf(promise), 1);
+                });
+            }
+        }
+        if (executing.length > 0) {
+            await Promise.race(executing);
+        } else {
+            break;
+        }
+    }
+    await Promise.all(executing);
+
+    broadcast(process, {
+        type: 'complete',
+        total: process.total,
+        success: process.screenshots.length,
+        screenshots: process.screenshots,
+    });
+
+    process.clients.forEach((client) => client.end());
+}
+
+function broadcast(
+    process: NonNullable<typeof currentProcess>,
+    message: object
+) {
+    const data = `data: ${JSON.stringify(message)}\n\n`;
+    process.clients.forEach((client) => client.write(data));
+}
 
 async function getSnapshotsForDomain(domain: string, from: string, to: string): Promise<{ timestamp: string; original: string; snapshotUrl: string }[]> {
     const apiUrl = `http://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(
@@ -143,6 +237,16 @@ async function getSnapshotsForDomain(domain: string, from: string, to: string): 
         console.error(`Ошибка при запросе к Internet Archive для домена ${domain}:`, error);
         return [];
     }
+}
+
+function formatTimestamp(timestamp: string): string {
+    const year = timestamp.substring(0, 4);
+    const month = timestamp.substring(4, 6);
+    const day = timestamp.substring(6, 8);
+
+    const date = new Date(`${year}-${month}-${day}`);
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    return date.toLocaleDateString('en-US', options).replace(/ /g, '_');
 }
 
 app.use('/screenshots', express.static(outputDir));

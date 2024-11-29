@@ -27,7 +27,7 @@
         <mat-datepicker #pickerEnd></mat-datepicker>
       </mat-form-field>
 
-      <!-- Кнопка и индикатор загрузки -->
+      <!-- Кнопка -->
       <div class="button-container">
         <button mat-raised-button color="primary" (click)="fetchAndGenerateScreenshots()" [disabled]="loading">
           Создать скриншоты
@@ -37,24 +37,27 @@
       <!-- Прогресс-бар -->
       <div *ngIf="loading" class="progress-container">
         <mat-progress-bar mode="determinate" [value]="progressValue"></mat-progress-bar>
-        <p>{{ progressValue }}%</p>
+        <p>{{ progressValue | number: '1.0-0' }}%</p>
+        <p>Создано скриншотов: {{ completedScreenshots }} из {{ totalScreenshots }}</p>
       </div>
     </mat-card-content>
   </mat-card>
 
-  <!-- Список скриншотов -->
-  <div *ngIf="screenshots.length > 0" class="grid-container">
-    <mat-card class="grid-item" *ngFor="let screenshot of screenshots">
-      <mat-card-header>
-        <mat-card-title>
-          <a href="{{ screenshot.snapshotUrl }}" target="_blank">{{ screenshot.snapshotUrl | slice: 0:30 }}...</a>
-        </mat-card-title>
-        <mat-card-subtitle>{{ screenshot.timestamp }}</mat-card-subtitle>
-      </mat-card-header>
-      <img mat-card-image [src]="screenshot.filePath" alt="Screenshot">
-      <mat-card-actions>
-        <button mat-button color="primary" (click)="openImage(screenshot.filePath)">Просмотр</button>
-      </mat-card-actions>
-    </mat-card>
+  <div *ngIf="screenshots.length > 0" class="screenshots-container">
+    <h4 class="screenshots-summary">Создано скриншотов: {{ completedScreenshots }} из {{ totalScreenshots }}</h4>
+    <div class="grid-container">
+      <mat-card class="grid-item" *ngFor="let screenshot of screenshots">
+        <mat-card-header>
+          <mat-card-title>
+            <a href="{{ screenshot.snapshotUrl }}" target="_blank">{{ screenshot.snapshotUrl | slice: 0:30 }}...</a>
+          </mat-card-title>
+          <mat-card-subtitle>{{ formatTimestamp(screenshot.timestamp) }}</mat-card-subtitle>
+        </mat-card-header>
+        <img mat-card-image [src]="screenshot.filePath" alt="Screenshot">
+        <mat-card-actions>
+          <button mat-button color="primary" (click)="openImage(screenshot.filePath)">Просмотр</button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
   </div>
 </div>

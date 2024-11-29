@@ -3,48 +3,63 @@ import puppeteer, { Browser } from 'puppeteer';
 let browserInstance: Browser | null = null;
 
 async function getBrowserInstance(): Promise<Browser> {
-    if (browserInstance) {
-        await browserInstance.close();
+    if (!browserInstance) {
+        browserInstance = await puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            protocolTimeout: 120000,
+        });
     }
-
-    browserInstance = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        protocolTimeout: 12000,
-    });
-
     return browserInstance;
 }
 
 export async function takeScreenshot(url: string, outputPath: string): Promise<void> {
-    console.log(`Attempting to create a screenshot for URL: ${url}`);
-    console.log(`Screenshot will be saved at: ${outputPath}`);
+    console.log(`Попытка создать скриншот для URL: ${url}`);
+    console.log(`Скриншот будет сохранен в: ${outputPath}`);
 
     const browser = await getBrowserInstance();
     const page = await browser.newPage();
 
     try {
-        const client = await page.target().createCDPSession();
-        await client.send('Network.clearBrowserCache');
-        await client.send('Network.clearBrowserCookies');
-
         await page.setViewport({ width: 1280, height: 720 });
+
+        // Опционально блокируем ненужные ресурсы для ускорения загрузки
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+            if (['stylesheet', 'font', 'media'].includes(request.resourceType())) {
+                request.abort();
+            } else {
+                request.continue();
+            }
+        });
+
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 120000 });
-        console.log(`Page ${url} loaded. Saving screenshot...`);
+        console.log(`Страница ${url} загружена. Сохранение скриншота...`);
 
         await page.screenshot({ path: outputPath, fullPage: false });
-        console.log(`Screenshot for ${url} saved successfully.`);
+        console.log(`Скриншот для ${url} успешно сохранен.`);
     } catch (error) {
-        console.error(`Error creating screenshot for ${url}:`, error);
+        console.error(`Ошибка при создании скриншота для ${url}:`, error);
+        throw error;
     } finally {
         await page.close();
     }
 }
 
-
-process.on('exit', async () => {
+function handleExit(signal: NodeJS.Signals) {
+    console.log(`Получен сигнал ${signal}. Закрытие экземпляра браузера...`);
     if (browserInstance) {
-        await browserInstance.close();
+        browserInstance.close().then(() => {
+            console.log('Экземпляр браузера закрыт.');
+            process.exit(0);
+        }).catch((error) => {
+            console.error('Ошибка при закрытии браузера:', error);
+            process.exit(1);
+        });
+    } else {
+        process.exit(0);
     }
-    console.log('Screenshot process completed successfully.');
-});
+}
+
+process.on('SIGINT', handleExit);
+process.on('SIGTERM', handleExit);
