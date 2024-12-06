@@ -1,20 +1,54 @@
-# Используем базовый образ с Node.js
+# /Users/admin/my_projects/screenshots/backend/Dockerfile
+
 FROM node:20
 
-# Устанавливаем рабочую директорию
+# Устанавливаем системные зависимости, необходимые для запуска Puppeteer (Chromium)
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnss3 \
+    libpango-1.0-0 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    libxrender1 \
+    wget \
+    xdg-utils \
+    gnupg \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Копируем package.json и package-lock.json
-COPY package*.json ./
+# Копируем package.json и tsconfig.json
+COPY package*.json tsconfig.json ./
 
-# Устанавливаем зависимости
-RUN npm install
+# Устанавливаем зависимости проекта (включая Puppeteer)
+RUN npm install --legacy-peer-deps
 
 # Копируем исходный код
-COPY . .
+COPY src ./src
 
 # Компилируем TypeScript
-RUN npm run build
+RUN npx tsc
 
-# Указываем команду для запуска
+# Запускаем приложение
 CMD ["npm", "start"]

@@ -124,7 +124,7 @@ async function processSnapshots(
     allSnapshots: { timestamp: string; original: string; snapshotUrl: string }[],
     process: NonNullable<typeof currentProcess>
 ) {
-    const maxConcurrentScreenshots = 5;
+    const maxConcurrentScreenshots = 3;
     const queue = allSnapshots.slice(); // Копируем массив
 
     const processSnapshot = async (snapshot: { snapshotUrl: string; original: string; timestamp: string }) => {

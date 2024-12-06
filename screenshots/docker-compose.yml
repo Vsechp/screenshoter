@@ -1,26 +1,22 @@
-version: "3.8"
-
 services:
   backend:
+    platform: linux/amd64
     build:
       context: ./backend
-    dockerfile: Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./backend:/app
     environment:
-      NODE_ENV: production
+      - NODE_ENV=development
     restart: always
 
   frontend:
+    platform: linux/amd64
     build:
       context: ./frontend
-    dockerfile: Dockerfile
+      dockerfile: Dockerfile
     ports:
-      - "8080:80"
-    volumes:
-      - ./frontend:/app
+      - "4200:4200"
     environment:
-      NODE_ENV: production
+      - NODE_ENV=development
     restart: always

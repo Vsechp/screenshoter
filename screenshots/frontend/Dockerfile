@@ -1,29 +1,19 @@
-# Stage 1: Node.js для сборки Angular приложения
-FROM node:20 AS builder
+FROM node:20
 
-# Устанавливаем рабочую директорию
+# Рабочая директория в контейнере
 WORKDIR /app
 
-# Копируем package.json и package-lock.json
-COPY package*.json ./
+# Копируем package.json и lock-файл
+COPY package*.json angular.json tsconfig.json tsconfig.app.json ./
 
 # Устанавливаем зависимости
-RUN npm install
+RUN npm install --legacy-peer-deps
+RUN npm install -g @angular/cli
 
-# Копируем исходный код
-COPY . .
+# Копируем остальные файлы проекта (src, и пр.)
+COPY src ./src
+COPY public ./public
 
-# Собираем Angular приложение
-RUN npm run build
+# Команда запуска приложения
 
-# Stage 2: Nginx для сервинга собранного приложения
-FROM nginx:alpine
-
-# Копируем собранное приложение из Stage 1
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Открываем порт
-EXPOSE 80
-
-# Запускаем nginx
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["ng", "serve", "--host", "0.0.0.0"]
