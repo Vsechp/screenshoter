@@ -46,4 +46,27 @@ cd frontend/
 ng start
 ```
 
+## Запуск с помощью Docker
 
+### Создание и запуск контейнера
+
+```bash
+cd screenshots/
+docker-compose up --build
+```
+
+### Запуск созданного контейнера
+
+```bash
+docker-compose up
+```
+
+### Остановка созданного контейнера
+
+```bash
+docker-compose down
+```
+
+## Адрес сервиса
+
+– Frontend сервиса будет доступен по адресу: http://localhost:4200/
